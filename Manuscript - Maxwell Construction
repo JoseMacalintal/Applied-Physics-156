@@ -1,0 +1,76 @@
+#Packages
+import numpy as np 
+import matplotlib.pyplot as plt 
+from scipy.integrate import quad 
+from scipy.optimize import fsolve
+
+#Functions 
+
+def graph_pv(v, t0): 
+    return 8*t0/(3*v - 1) - 3/v**2
+
+def equal_area(p_test, t0):
+    VanDerWaal = [1, -1.0 / 3 * ( 1.0 + 8.0 * t0 / p_test), 3.0 / p_test,  -1.0 / p_test] 
+    v = np.roots(VanDerWaal)
+    v.sort()
+    Area1 = (v[1] - v[0]) * p_test - quad(graph_pv, v[0], v[1], args=(t0,))
+    Area2 = quad(graph_pv, v[1], v[2], args=(t0,)) - (v[2] - v[1]) * p_test
+    return  Area1 - Area2
+
+def VanDerWaal_rootfind(p_test, t0): #Considers V as the variable
+    VanDerWaal = [1, -1.0 / 3 * ( 1.0 + 8.0 * t0 / p_test), 3.0 / p_test,  -1.0 / p_test]
+    v = np.roots(VanDerWaal)
+    v.sort()
+    return v
+
+#### Main Code 
+
+#Initial Values
+t0_list = [1.05, 1.00, 0.95, 0.92, 0.85]
+v_list = np.arange(0.34, 5, 0.01) #Avoiding 1/3 to prevent diverengece at 1/3
+p_guess = {'0.95': 0.80, '0.92':0.60, '0.85':0.50} #corresponding to curves for T0 = 0.95, 0.92, 0.85 
+
+#Others
+plt.figure(figsize=(10,5))
+
+#Main Loop
+for t0 in t0_list:
+    if t0 < 1: 
+        #Determines Constant Pressure
+        p_eq = fsolve(equal_area, p_guess[str(t0)], args=(t0,))
+        print('The Constant Pressure for T = ' + str(t0) + ' is ' + str(p_eq))
+        
+        #Determines the Volume Roots 
+        v = VanDerWaal_rootfind(p_eq, t0)
+        print('The Volume Roots for T = ' + str(t0) + ' is ', v)
+        
+        #Determines whether the area beneath the curves are equivalent
+        Area1, error1 = (v[1] - v[0]) * p_eq - quad(graph_pv,  v[0], v[1], args=(t0,))
+        Area2, error2 = quad(graph_pv, v[1], v[2], args=(t0,)) - (v[2] - v[1]) * p_eq
+        print("Equal Areas for T = " + str(t0))
+        print(Area1, Area2)
+        
+        #Graphing
+        t0_label = "T = %s"%(t0)
+        plt.plot(v_list, graph_pv(v_list, t0), label=t0_label)           #Plots Curve
+        plt.plot(v[0], p_eq, 'ko', v[1], p_eq, 'ko', v[2], p_eq, 'ko')   #Plots Intersection Points
+        plt.plot([v[0], v[2]], [p_eq, p_eq], 'k--')                      #Draws Horizontal Line
+        
+        
+    else:
+        t0_label = "T = %s"%(t0)
+        plt.plot(v_list, graph_pv(v_list, t0), label=t0_label)
+        
+        
+        
+plt.ylim(0, 2)
+plt.xlim(0, 5)
+plt.legend()
+plt.xlabel(r"$V/ V_{c}$", fontsize=14)
+plt.ylabel(r"$\rho(V)$", fontsize=14)
+plt.title('Maxwell Construction for the van Der Waals Equation and its Isotherms', fontsize=14)
+#plt.tight_layout()
+#plt.savefig("Isotherms.png")
+
+plt.show()
+
